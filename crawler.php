@@ -51,8 +51,7 @@ function main($file_name){
       if( empty($file) ) { echo "\n"; continue;  }
       $url             = Constant::get_url($file);
       $getJsonContents = new getJsonContents($url);
-      $contents        = $getJsonContents -> run();
-      echo ajust_format( $contents );
+      $getJsonContents -> run();
       sleep(1);
    }
 }
@@ -69,38 +68,43 @@ function is_valid($argv){
    return true;
 }
 
-function ajust_format( $data ){
-   foreach( Constant::get_columns() as $column ){
-      $data[$column] = preg_replace("/\r\r\r/", "\r\r", $data[$column] );
-      $data[$column] = str_replace('"', '""', $data[$column] );
-   }
-   return '"'.join('","', $data) . '"' . "\n";  
-}
-
 class getJsonContents{
    function __construct($url){
-     $this->json_array = json_decode( file_get_contents($url), true );
+      $this->json_array = json_decode( file_get_contents($url), true );
+      $this->data       = Array();
    }
 
    function run () {
-     $data['name']                = $this->json_array['name'];
-     $data['website']             = $this->json_array['homepage_url'];
-     $data['blog_url']            = $this->json_array['blog_url'];
-     $data['category_code']       = $this->json_array['category_code'];
-     $data['number_of_employees'] = $this->json_array['number_of_employees'];
-     $data['founded']             = join( "/", array( $this->json_array['founded_year'], $this->json_array['founded_month'], $this->json_array['founded_day'] ));
-     $data['deadpooled']          = join( "/", array( $this->json_array['deadpooled_year'], $this->json_array['deadpooled_month'], $this->json_array['deadpooled_day'] ));
-     $data['description']         = $this->json_array['description'];
-     $data['overview']            = self::get_overview( $this->json_array['overview'] );
-     $data['relationships']       = self::get_relationships( $this->json_array['relationships'] );
-     $data['competitors']         = self::get_competitions( $this->json_array['competitions'] );
-     $data['providerships']       = self::get_providerships( $this->json_array['providerships'] );
-     $data['total_money_raised']  = $this->json_array['total_money_raised'];
-     $data['funding_rounds']      = self::get_funding_rounds( $this->json_array['funding_rounds'] );
-     $data['acquisition']         = $this->json_array['acquisition'];
-     $data['acquisitions']        = self::get_acquisitions( $this->json_array['acquisitions'] );
-     $data['invest']              = self::get_invest( $this->json_array['investments'] );
-     return $data;
+      self::parse_json();
+      echo self::ajust_format();
+   }
+
+   function parse_json(){
+      $this->data['name']                = $this->json_array['name'];
+      $this->data['website']             = $this->json_array['homepage_url'];
+      $this->data['blog_url']            = $this->json_array['blog_url'];
+      $this->data['category_code']       = $this->json_array['category_code'];
+      $this->data['number_of_employees'] = $this->json_array['number_of_employees'];
+      $this->data['founded']             = join( "/", array( $this->json_array['founded_year'], $this->json_array['founded_month'], $this->json_array['founded_day'] ));
+      $this->data['deadpooled']          = join( "/", array( $this->json_array['deadpooled_year'], $this->json_array['deadpooled_month'], $this->json_array['deadpooled_day'] ));
+      $this->data['description']         = $this->json_array['description'];
+      $this->data['overview']            = self::get_overview( $this->json_array['overview'] );
+      $this->data['relationships']       = self::get_relationships( $this->json_array['relationships'] );
+      $this->data['competitors']         = self::get_competitions( $this->json_array['competitions'] );
+      $this->data['providerships']       = self::get_providerships( $this->json_array['providerships'] );
+      $this->data['total_money_raised']  = $this->json_array['total_money_raised'];
+      $this->data['funding_rounds']      = self::get_funding_rounds( $this->json_array['funding_rounds'] );
+      $this->data['acquisition']         = $this->json_array['acquisition'];
+      $this->data['acquisitions']        = self::get_acquisitions( $this->json_array['acquisitions'] );
+      $this->data['invest']              = self::get_invest( $this->json_array['investments'] );
+   }
+
+   function ajust_format(){
+      foreach( Constant::get_columns() as $column ){
+         $this->data[$column] = preg_replace("/\r\r\r/", "\r\r", $this->data[$column] );
+         $this->data[$column] = str_replace('"', '""', $this->data[$column] );
+      }
+      return '"'.join('","', $this->data) . '"' . "\n";  
    }
 
    function get_relationships( $relation_ships ){
@@ -190,15 +194,15 @@ class getJsonContents{
    } 
 
    function get_overview($overview){
-     $overview = self::removeTag( $overview, 'p' );
-     $overview = self::removeTag( $overview, 'a' );
-     $overview = self::removeTag( $overview, 'em' );
-     return $overview;
+      $overview = self::removeTag( $overview, 'p' );
+      $overview = self::removeTag( $overview, 'a' );
+      $overview = self::removeTag( $overview, 'em' );
+      return $overview;
    }
 
    function removeTag($str, $name){
-       $regx = "/<\/?$name(.*?)>/s";
-       return preg_replace($regx, '', $str);
+      $regx = "/<\/?$name(.*?)>/s";
+      return preg_replace($regx, '', $str);
    }
 
 }
@@ -232,5 +236,4 @@ class Constant{
       return sprintf( API_URL, basename( $file) );
    }
 }
-
 ?>
