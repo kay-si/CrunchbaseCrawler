@@ -39,8 +39,7 @@ define( 'COMPANY_URL', 'http://www.crunchbase.com/company/' );
 define( 'PEOPLE_URL', 'http://www.crunchbase.com/person/' );
 
 if( is_valid($argv) ){
-     $file_name = $argv[1];
-     main($file_name);
+     main($argv[1]);
 }
 
 function main($file_name){
