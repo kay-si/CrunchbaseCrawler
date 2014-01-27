@@ -37,52 +37,46 @@ define( 'API_KEY', '' );
 define( 'API_URL', 'http://api.crunchbase.com/v/1/company/%s.js?api_key=' . API_KEY );
 define( 'COMPANY_URL', 'http://www.crunchbase.com/company/' );
 define( 'PEOPLE_URL', 'http://www.crunchbase.com/person/' );
-$COLUMNS = array(
-    'name',
-    'website',
-    'blog_url',
-    'category_code',
-    'number_of_employees',
-    'founded',
-    'deadpooled',
-    'description',
-    'overview',
-    'relationships',
-    'competitors',
-    'providerships',
-    'total_money_raised',
-    'funding_rounds',
-    'acquisition',
-    'acquisitions',
-    'invest',
-);
-if( empty( $argv[1] )){
-  echo "Input file is undefined\n";
-  exit;
-}
-if(  !is_file( $argv[1] )){
-  echo "Input file is not found\n";
-  exit;
-}
-$input=file_get_contents($argv[1]);
-$files=explode("\n", $input);
 
-echo '"' . join('","', $COLUMNS) . '"'. "\n";
-foreach( $files as $file ){
-   if( empty($file)) { echo "\n"; continue;  }
-   $url = sprintf( API_URL, get_company_name($file) );
-   $con = new getJsonContents($url);
-   $data = $con -> run();
-   foreach( $COLUMNS as $column ){
+if( $error = is_valid($argv) ){
+      print $error;
+      exit;
+}else{
+     $file_name = $argv[1];
+     main($file_name);
+}
+
+function main($file_name){
+   $input=file_get_contents($file_name);
+   $files=explode("\n", $input);
+
+   echo Constant::get_firstline();
+   foreach( $files as $file ){
+      if( empty($file) ) { echo "\n"; continue;  }
+      $url             = Constant::get_url($file);
+      $getJsonContents = new getJsonContents($url);
+      $contents        = $getJsonContents -> run();
+      echo ajust_format( $contents );
+      sleep(1);
+   }
+}
+
+function is_valid($argv){
+   if( empty( $argv[1] )){
+     return "Input file is undefined\n";
+   }
+   if(  !is_file( $argv[1] )){
+     return "Input file is not found\n";
+   }
+   return false;
+}
+
+function ajust_format( $data ){
+   foreach( Constant::get_columns() as $column ){
       $data[$column] = preg_replace("/\r\r\r/", "\r\r", $data[$column] );
       $data[$column] = str_replace('"', '""', $data[$column] );
    }
-   echo '"'.join('","', $data) . '"' . "\n";
-   sleep(1);
-}
-
-function get_company_name( $url ){
-  return basename( $url );
+   return '"'.join('","', $data) . '"' . "\n";  
 }
 
 class getJsonContents{
@@ -155,7 +149,6 @@ class getJsonContents{
    function get_invest( $investments ){
       $output = array();
       foreach( $investments as $value ){
-#         $value['source_description'] = str_replace('"', '""', $value['source_description']);
          $output[] = $value['funding_round']['round_code'] . " : " . $value['funding_round']['raised_currency_code'] . ' ' . $value['funding_round']['raised_amount'] . " " .
                      join( "/", array( $value['funding_round']['funded_year'] , $value['funding_round']['funded_month'], $value['funding_round']['funded_day'] ) ) . "\r" .
                      $value['funding_round']['company']['name'] . "\r   " . COMPANY_URL . $value['funding_round']['company']['permalink'] . "\r" .
@@ -167,7 +160,6 @@ class getJsonContents{
    function get_acquisitions( $acquisitions ){
       $output = array();
       foreach( $acquisitions as $value ){
-#         $value['source_description'] = str_replace('"', '""', $value['source_description']);
          $output[] = $value['company']['name'] . " : " . $value['price_amount'] . " " . $value['price_currency_code'] . " " . $value['term_code'] . " " .
                      join( "/", array( $value['acquired_year'] , $value['acquired_month'], $value['acquired_day'] ) ) . "\r   " .
                      COMPANY_URL . $value['company']['permalink'] . "\r".
@@ -179,7 +171,6 @@ class getJsonContents{
    function get_funding_rounds( $funding_rounds ){
       $output = array();
       foreach( $funding_rounds as $value ){
-#         $value['source_description'] = str_replace('"', '""', $value['source_description']);
          $output[] = $value['round_code'] . " : " . $value['raised_currency_code'] . ' ' . $value['raised_amount'] . " " .
                      join( "/", array( $value['funded_year'] , $value['funded_month'], $value['funded_day'] ) ) . "\r" .
                      self::get_investments( $value['investments'] ) . "\r".
@@ -212,9 +203,35 @@ class getJsonContents{
        return preg_replace($regx, '', $str);
    }
 
-   function remove_tab_break($str){
-       $str = trim( preg_replace("/\t|\r/", '', $str) );
-       return preg_replace('/<br\/>|<br \/>/', ' ', $str);
+}
+
+class Constant{
+   public static function get_columns(){
+      return array (
+         'name',
+         'website',
+         'blog_url',
+         'category_code',
+         'number_of_employees',
+         'founded',
+         'deadpooled',
+         'description',
+         'overview',
+         'relationships',
+         'competitors',
+         'providerships',
+         'total_money_raised',
+         'funding_rounds',
+         'acquisition',
+         'acquisitions',
+         'invest',
+      );
+   }
+   public static function get_firstline(){
+      return '"' . join('","', self::get_columns() ) . '"'. "\n";
+   }
+   public static function get_url($file){
+      return sprintf( API_URL, basename( $file) );
    }
 }
 
