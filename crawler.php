@@ -38,10 +38,7 @@ define( 'API_URL', 'http://api.crunchbase.com/v/1/company/%s.js?api_key=' . API_
 define( 'COMPANY_URL', 'http://www.crunchbase.com/company/' );
 define( 'PEOPLE_URL', 'http://www.crunchbase.com/person/' );
 
-if( $error = is_valid($argv) ){
-      print $error;
-      exit;
-}else{
+if( is_valid($argv) ){
      $file_name = $argv[1];
      main($file_name);
 }
@@ -63,12 +60,14 @@ function main($file_name){
 
 function is_valid($argv){
    if( empty( $argv[1] )){
-     return "Input file is undefined\n";
+     print "Input file is undefined\n";
+     return false;
    }
    if(  !is_file( $argv[1] )){
-     return "Input file is not found\n";
+     print "Input file is not found\n";
+     return false;
    }
-   return false;
+   return true;
 }
 
 function ajust_format( $data ){
