@@ -104,7 +104,7 @@ class getJsonContents{
          $this->data[$column] = preg_replace("/\r\r\r/", "\r\r", $this->data[$column] );
          $this->data[$column] = str_replace('"', '""', $this->data[$column] );
       }
-      return '"'.join('","', $this->data) . '"' . "\n";  
+      return mb_convert_encoding( '"'.join('","', $this->data), 'sjis-win', 'UTF-8' ). '"' . "\n";  
    }
 
    function get_relationships( $relation_ships ){
