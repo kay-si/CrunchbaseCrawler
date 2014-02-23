@@ -70,8 +70,9 @@ function is_valid($argv){
 
 class getJsonContents{
    function __construct($url){
-      $this->json_array = json_decode( file_get_contents($url), true );
-      $this->data       = Array();
+      $this->json_array  = json_decode( file_get_contents($url), true );
+      $this->data        = Array();
+      $this->investments = Array();
    }
 
    function run () {
@@ -94,8 +95,9 @@ class getJsonContents{
       $this->data['providerships']       = self::get_providerships( $this->json_array['providerships'] );
       $this->data['total_money_raised']  = $this->json_array['total_money_raised'];
       $this->data['funding_rounds']      = self::get_funding_rounds( $this->json_array['funding_rounds'] );
-      $this->data['acquisition']         = $this->json_array['acquisition'];
+      $this->data['acquisition']         = self::get_acquisition( $this->json_array['acquisition'] );
       $this->data['acquisitions']        = self::get_acquisitions( $this->json_array['acquisitions'] );
+      $this->data['investments']         = self::get_investments( $this->json_array['investments'] );
       $this->data['invest']              = self::get_invest( $this->json_array['investments'] );
    }
 
@@ -159,6 +161,31 @@ class getJsonContents{
       return join( "\r\r", $output);
    }
 
+   function get_investments( $investments ){
+      $output = array();
+      foreach( $investments as $value ){
+         $output[] =  $value['funding_round']['company']['round_code'] . " "  .
+                      join( "/", array(  $value['funding_round']['company']['funded_year'], $value['funding_round']['company']['funded_month'], $value['funding_round']['company']['funded_day'] ) ) . " : " .
+                      $value['funding_round']['company']['raised_currency_code'] . " " .
+                      $value['funding_round']['company']['raised_amount'] . " " .
+                      $value['funding_round']['company']['source_description'] . "\r" .
+                      $value['funding_round']['company']['name'] . "\r" .
+                      COMPANY_URL . $value['funding_round']['company']['permalink'];
+        $this->investments[] = $value['funding_round']['company']['permalink'];
+      }
+      return join( "\r\r", $output);
+   }
+
+   function get_acquisition( $value ){
+      if( !is_array($value) ){ return "" ;}
+      $output   = array();
+      $output[] = $value['acquiring_company']['name'] . " : " . $value['price_amount'] . " " . $value['price_currency_code'] . " " . $value['term_code'] . " " .
+                     join( "/", array( $value['acquired_year'] , $value['acquired_month'], $value['acquired_day'] ) ) . "\r   " .
+                     COMPANY_URL . $value['company']['permalink'] . "\r".
+                     $value['source_description']  . "\r   " . $value['source_url'];
+      return join( "\r\r", $output);
+   }
+
    function get_acquisitions( $acquisitions ){
       $output = array();
       foreach( $acquisitions as $value ){
@@ -175,13 +202,13 @@ class getJsonContents{
       foreach( $funding_rounds as $value ){
          $output[] = $value['round_code'] . " : " . $value['raised_currency_code'] . ' ' . $value['raised_amount'] . " " .
                      join( "/", array( $value['funded_year'] , $value['funded_month'], $value['funded_day'] ) ) . "\r" .
-                     self::get_investments( $value['investments'] ) . "\r".
+                     self::get_invest_company( $value['investments'] ) . "\r".
                      $value['source_description'] . "\r   "  . $value['source_url'];
       }
       return join( "\r\r", $output);
    }
 
-   function get_investments( $investments ){
+   function get_invest_company( $investments ){
       $output = array();
       foreach( $investments as $value ){
          $data     = $value['company']['name'] . " " . $value['company']['permalink'] . "\r   ";
@@ -226,6 +253,7 @@ class Constant{
          'funding_rounds',
          'acquisition',
          'acquisitions',
+         'investments',
          'invest',
       );
    }
