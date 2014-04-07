@@ -4,17 +4,23 @@ CrunchbaseCrawler
 
 Edit CRUNCHBASE API KEY CODE @crawler.php
 Use at Shell Command like below
+
+```
 php crawler.php ./Input > Output.csv
+```
 
-# Input
+## Input
 
+```
 crunch base permalink list or crunchbase company url
 Facebook => facebook or http://www.crunchbase.com/company/facebook
 Sample is Input_Samples.txt
+```
 
-#Output
+## Output
 
 Column is below
+```
 Sample is Output_sample.csv
 'name',
 'website',
@@ -33,3 +39,4 @@ Sample is Output_sample.csv
 'acquisition',
 'acquisitions',
 'invest',
+```
