@@ -1,2 +1,4 @@
-Input_Samples.txt
-Output_Sample.csv
+*.txt
+*.csv
+*_bk
+*.DS_Store
