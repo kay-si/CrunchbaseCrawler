@@ -97,7 +97,6 @@ class getJsonContents{
       $this->data['acquisition']         = self::get_acquisition( $this->json_array['acquisition'] );
       $this->data['acquisitions']        = self::get_acquisitions( $this->json_array['acquisitions'] );
       $this->data['investments']         = self::get_investments( $this->json_array['investments'] );
-      $this->data['invest']              = self::get_invest( $this->json_array['investments'] );
    }
 
    function ajust_format(){
@@ -149,28 +148,13 @@ class getJsonContents{
 
    }
 
-   function get_invest( $investments ){
+   function get_investments( $investments ){
       $output = array();
       foreach( $investments as $value ){
          $output[] = $value['funding_round']['round_code'] . " : " . $value['funding_round']['raised_currency_code'] . ' ' . $value['funding_round']['raised_amount'] . " " .
                      join( "/", array( $value['funding_round']['funded_year'] , $value['funding_round']['funded_month'], $value['funding_round']['funded_day'] ) ) . "\r" .
                      $value['funding_round']['company']['name'] . "\r   " . COMPANY_URL . $value['funding_round']['company']['permalink'] . "\r" .
                      $value['funding_round']['source_description'] . "\r   "  . $value['funding_round']['source_url'];
-      }
-      return join( "\r\r", $output);
-   }
-
-   function get_investments( $investments ){
-      $output = array();
-      foreach( $investments as $value ){
-         $output[] =  $value['funding_round']['company']['round_code'] . " "  .
-                      join( "/", array(  $value['funding_round']['company']['funded_year'], $value['funding_round']['company']['funded_month'], $value['funding_round']['company']['funded_day'] ) ) . " : " .
-                      $value['funding_round']['company']['raised_currency_code'] . " " .
-                      $value['funding_round']['company']['raised_amount'] . " " .
-                      $value['funding_round']['company']['source_description'] . "\r" .
-                      $value['funding_round']['company']['name'] . "\r" .
-                      COMPANY_URL . $value['funding_round']['company']['permalink'];
-        $this->investments[] = $value['funding_round']['company']['permalink'];
       }
       return join( "\r\r", $output);
    }
@@ -253,7 +237,6 @@ class Constant{
          'acquisition',
          'acquisitions',
          'investments',
-         'invest',
       );
    }
    public static function get_firstline(){
