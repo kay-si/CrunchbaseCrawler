@@ -12,30 +12,36 @@
 // Output =========================================
 // Column is below
 // Sample is Output_sample.csv
-// 'name',
-// 'website',
-// 'blog_url',
-// 'category_code',
-// 'number_of_employees',
-// 'founded',
-// 'deadpooled',
-// 'description',
-// 'overview',
-// 'relationships',
-// 'competitors',
-// 'providerships',
-// 'total_money_raised',
-// 'funding_rounds',
-// 'acquisition',
-// 'acquisitions',
-// 'invest',
+// 'name'             
+// 'crunchbase_url'   
+// 'homepage_url'     
+// 'short_description'
+// 'products'         
+// 'description'      
+// 'founded_on'       
+// 'closed_on'        
+// 'stock_exchange_id'
+// 'own'              
+// 'current_team'     
+// 'acquisitions'     
+// 'competitors'      
+// 'offices'          
+// 'headquarters'     
+// 'funding_rounds'   
+// 'markets'          
+// 'investments'      
+// 'founders'         
+// 'ipo'              
+// 'web_presences'    
+// 'press'            
 //
 $CONFIG = parse_ini_file( "./config.ini" );
 define( 'API_KEY', $CONFIG["API_KEY"] ); 
+define( 'USER_KEY', "?user_key=" . API_KEY );
+define( 'PAGENATE_NUM', 8 );
+define( 'PAGENATE_UNIT', 1000 );
 
-define( 'API_URL', 'http://api.crunchbase.com/v/1/company/%s.js?api_key=' . API_KEY );
-define( 'COMPANY_URL', 'http://www.crunchbase.com/company/' );
-define( 'PEOPLE_URL', 'http://www.crunchbase.com/person/' );
+define( 'API_URL', 'http://api.crunchbase.com/v/2/organizations/%s' . USER_KEY );
 
 if( is_valid($argv) ){
      main($argv[1]);
@@ -49,6 +55,7 @@ function main($file_name){
    foreach( $files as $file ){
       if( empty($file) ) { echo "\n"; continue;  }
       $url             = Constant::get_url($file);
+      $url             = './facebook';
       $getJsonContents = new getJsonContents($url);
       $getJsonContents -> run();
       sleep(1);
@@ -69,9 +76,15 @@ function is_valid($argv){
 
 class getJsonContents{
    function __construct($url){
-      $this->json_array  = json_decode( file_get_contents($url), true );
-      $this->data        = Array();
-      $this->investments = Array();
+      $json_contents       = json_decode( file_get_contents($url), true );
+      $this->url           = array(
+                                    "www"      => $json_contents["metadata"]["www_path_prefix"  ], 
+                                    "api"      => $json_contents["metadata"]["api_path_prefix"  ],
+                                    "image"    => $json_contents["metadata"]["image_path_prefix"],
+                                   );
+      $this->relationships = $json_contents["data"]["relationships"];
+      $this->properties    = $json_contents["data"]["properties"];
+      $this->data          = Array();
    }
 
    function run () {
@@ -79,24 +92,125 @@ class getJsonContents{
       echo self::ajust_format();
    }
 
+   private function get_pagenate( $paging ){
+       $res       = array();
+       $page_max  = ceil( $paging["total_items"] / PAGENATE_UNIT );
+       for( $n = 1; $n <= $page_max; $n++){
+          $url      = $paging["first_page_url"] . USER_KEY . "&page=" . $n . "&order=" . rawurlencode( $paging["sort_order"] );
+          $contents = json_decode( file_get_contents( $url ),  true );
+          $res      = array_merge( $res, $contents["data"]["items"] );
+       }
+       return $res;
+   }
+
+   private function get_items( $data, $term ){
+      if( !preg_match( "/press|current_team/", $term ) && $data[$term]["paging"]["total_items"] > PAGENATE_NUM ){
+         $data[$term]["items"] = self::get_pagenate( $data[$term]["paging"] );
+      }
+      $detail = array();
+      foreach( $data[$term]["items"] as $item ){
+         array_push( $detail , self::get_item_detail( $item, $term ) );
+         array_push( $detail , "" );
+      }
+      return join("\r", $detail );
+   }
+
+   private function get_item_detail( $item, $term ){
+      $res = array();
+      switch( true ){
+         case $term == "owns" :
+            array_push( $res, $item["name"] );
+            array_push( $res, $this->url["www"] . $item['path'] );
+         break;
+         case $term == "current_team" :
+            $from = (!empty($item["started_on"]))? " From " . $item["started_on"]:"";
+            array_push( $res, $item["title"] . " : " .  $item["last_name"] . " " .  $item["first_name"] . $from );
+            array_push( $res, $this->url["www"] . $item['path'] );
+         break;
+         case $term == "acquisitions" :
+            $from = (!empty($item["announce_on"]))? " From " . $item["announce_on"]:"";
+            array_push( $res, $item["type"] . " : " .  $item["name"] . $from );
+            array_push( $res, $this->url["www"] . $item['path'] );
+         break;
+         case preg_match( "/funding_rounds|competitors|founders|ipo|products/", $term ) :
+            array_push( $res, $item["type"] . " : " .  $item["name"] );
+            array_push( $res, $this->url["www"] . $item['path'] );
+         break;
+         case $term == "markets" :
+            array_push( $res, $item["type"] . " : " .  $item["name"] );
+         break;
+         case preg_match( "/headquarters|offices/", $term ) :
+            array_push( $res, self::get_location( $item ) );
+         break;
+         case $term == "investments" :
+            array_push( $res, self::get_investments( $item ) );
+         break;
+         case $term == "web_presences" :
+            array_push( $res, self::get_web_presences( $item ) );
+         break;
+         case $term == "press" :
+            array_push( $res, self::get_press( $item ) );
+         break;
+      }
+      return join("\r", $res);
+   }
+
+   private function get_web_presences( $item ){
+      $res = array();
+      array_push( $res, $item["type"] . " : ". $item["title"]);
+      array_push( $res, $item["url"] );
+      return join("\r", $res);
+   }
+
+   private function get_press( $item ){
+      $res = array();
+      array_push( $res, $item["type"] . " : ". $item["title"] . " " . $item["author"]  . " On " . $item["posted_on"]);
+      array_push( $res, $item["url"] );
+      return join("\r", $res);
+   }
+
+   private function get_investments( $item ){
+      $res = array();
+      array_push( $res, $item['type'] . ' :' . $item['money_invested_currency_code'] . ' ' . $item['money_invested'] . ' ' . $item['money_invested_usd'] );
+      array_push( $res, $item['invested_in']['type'] . " : " . $item['invested_in']["name"] );
+      array_push( $res, $this->url["www"] . $item['invested_in']['path'] );
+      array_push( $res, "Founded Round\n" . $this->url['www'] . $item['funding_round']['path'] );
+      return join( $res, "\r" );
+   }
+   private function get_location( $item ){
+      $res = $item["type"] . " : " . $item["name"] . " ";
+      $location = array();
+      if(!empty( $item["street_1"] ))      { array_push( $location, $item["street_1"] ); }
+      if(!empty( $item["street_2"] ))      { array_push( $location, $item["street_2"] ); }
+      if(!empty( $item["city"] ))          { array_push( $location, $item["city"] ); }
+      if(!empty( $item["region"] ))        { array_push( $location, $item["region"] ); }
+      if(!empty( $item["country_code"] ))  { array_push( $location, $item["country_code"] ); }
+      return $res . join( ", ", $location);
+   }
+
    function parse_json(){
-      $this->data['name']                = $this->json_array['name'];
-      $this->data['website']             = $this->json_array['homepage_url'];
-      $this->data['blog_url']            = $this->json_array['blog_url'];
-      $this->data['category_code']       = $this->json_array['category_code'];
-      $this->data['number_of_employees'] = $this->json_array['number_of_employees'];
-      $this->data['founded']             = join( "/", array( $this->json_array['founded_year'], $this->json_array['founded_month'], $this->json_array['founded_day'] ));
-      $this->data['deadpooled']          = join( "/", array( $this->json_array['deadpooled_year'], $this->json_array['deadpooled_month'], $this->json_array['deadpooled_day'] ));
-      $this->data['description']         = $this->json_array['description'];
-      $this->data['overview']            = self::get_overview( $this->json_array['overview'] );
-      $this->data['relationships']       = self::get_relationships( $this->json_array['relationships'] );
-      $this->data['competitors']         = self::get_competitions( $this->json_array['competitions'] );
-      $this->data['providerships']       = self::get_providerships( $this->json_array['providerships'] );
-      $this->data['total_money_raised']  = $this->json_array['total_money_raised'];
-      $this->data['funding_rounds']      = self::get_funding_rounds( $this->json_array['funding_rounds'] );
-      $this->data['acquisition']         = self::get_acquisition( $this->json_array['acquisition'] );
-      $this->data['acquisitions']        = self::get_acquisitions( $this->json_array['acquisitions'] );
-      $this->data['investments']         = self::get_investments( $this->json_array['investments'] );
+      $this->data['name'             ] = $this->properties['name'];
+      $this->data['crunchbase_url'   ] = $this->url["www"] . "/organization/" . $this->properties["permalink"];
+      $this->data['short_description'] = $this->properties['short_description'];
+      $this->data['description'      ] = $this->properties['description'];
+      $this->data['homepage_url'     ] = $this->properties['homepage_url'];
+      $this->data['stock_exchange_id'] = $this->properties['stock_exchange_id'];
+      $this->data['founded_on'       ] = (!empty( $this->properties['founded_on']) )?$this->properties['founded_on']:"";
+      $this->data['closed_on'        ] = (!empty( $this->properties['closed_on'] ) )?$this->properties['closed_on']:"";
+      $this->data['own'              ] = self::get_items( $this->relationships, "owns" );
+      $this->data['current_team'     ] = self::get_items( $this->relationships, "current_team" );
+      $this->data['acquisitions'     ] = self::get_items( $this->relationships, "acquisitions" );
+      $this->data['competitors'      ]  = self::get_items( $this->relationships, "competitors" );
+      $this->data['offices'          ] = self::get_items( $this->relationships, "offices" );
+      $this->data['headquarters'     ] = self::get_items( $this->relationships, "headquarters" );
+      $this->data['funding_rounds'   ] = self::get_items( $this->relationships, "funding_rounds" );
+      $this->data['markets'          ] = self::get_items( $this->relationships, "markets" );
+      $this->data['investments'      ] = self::get_items( $this->relationships, "investments" );
+      $this->data['founders'         ] = self::get_items( $this->relationships, "founders" );
+      $this->data['ipo'              ] = self::get_items( $this->relationships, "ipo" );
+      $this->data['products'         ] = self::get_items( $this->relationships, "products" );
+      $this->data['web_presences'    ] = self::get_items( $this->relationships, "web_presences" );
+      $this->data['press'            ] = self::get_items( $this->relationships, "press" );
    }
 
    function ajust_format(){
@@ -107,136 +221,34 @@ class getJsonContents{
       return mb_convert_encoding( '"'.join('","', $this->data), 'sjis-win', 'UTF-8' ). '"' . "\n";  
    }
 
-   function get_relationships( $relation_ships ){
-      $output = array();
-      foreach( $relation_ships as $value ){
-         if( $value['is_past'] ){
-            $output[] = "Past " . $value['title'] . " : " . $value['person']['first_name'] . " " . $value['person']['last_name'] . "\r   " . PEOPLE_URL . $value['person']['permalink'];
-         }else{
-            $output[] = $value['title'] . " : " . $value['person']['first_name'] . " " . $value['person']['last_name'] . "\r   " . PEOPLE_URL . $value['person']['permalink'];
-         }
-      }
-      return join( "\r", $output );
-   }
-
-   function get_competitions( $competitions ){
-      $output = array();
-      foreach( $competitions as $value ){
-         $output[] = $value['competitor']['name'] . "\r   " . COMPANY_URL . $value['competitor']['permalink'];
-      }
-      return join( "\r\r", $output);
-   }
-
-   function get_providerships( $providerships ){
-      $output = array();
-      foreach( $providerships as $value ){
-         if( $value['is_past'] ){
-            $output[] = " Past " . $value['title'] . " : " . $value['provider']['name'] . "\r   " . COMPANY_URL . $value['provider']['permalink'];
-         }else{
-            $output[] = $value['title'] . " : " . $value['provider']['name'] . "\r   " . COMPANY_URL . $value['provider']['permalink'];
-         }
-      }
-      return join( "\r\r", $output);
-   }
-
-   function get_offices( $offices ){
-      $output = array();
-      foreach( $offices as $value ){
-         $output[] = $value['description'] . " : " . trim ( join(" ", array($value['address2'], $value['address1'], $value['zip_code'], $value['city'], $value['state_code'], $value['country_code'] )) );
-      }
-      return join( "\r\r", $output);
-
-   }
-
-   function get_investments( $investments ){
-      $output = array();
-      foreach( $investments as $value ){
-         $output[] = $value['funding_round']['round_code'] . " : " . $value['funding_round']['raised_currency_code'] . ' ' . $value['funding_round']['raised_amount'] . " " .
-                     join( "/", array( $value['funding_round']['funded_year'] , $value['funding_round']['funded_month'], $value['funding_round']['funded_day'] ) ) . "\r" .
-                     $value['funding_round']['company']['name'] . "\r   " . COMPANY_URL . $value['funding_round']['company']['permalink'] . "\r" .
-                     $value['funding_round']['source_description'] . "\r   "  . $value['funding_round']['source_url'];
-      }
-      return join( "\r\r", $output);
-   }
-
-   function get_acquisition( $value ){
-      if( !is_array($value) ){ return "" ;}
-      $output   = array();
-      $output[] = $value['acquiring_company']['name'] . " : " . $value['price_amount'] . " " . $value['price_currency_code'] . " " . $value['term_code'] . " " .
-                     join( "/", array( $value['acquired_year'] , $value['acquired_month'], $value['acquired_day'] ) ) . "\r   " .
-                     COMPANY_URL . $value['company']['permalink'] . "\r".
-                     $value['source_description']  . "\r   " . $value['source_url'];
-      return join( "\r\r", $output);
-   }
-
-   function get_acquisitions( $acquisitions ){
-      $output = array();
-      foreach( $acquisitions as $value ){
-         $output[] = $value['company']['name'] . " : " . $value['price_amount'] . " " . $value['price_currency_code'] . " " . $value['term_code'] . " " .
-                     join( "/", array( $value['acquired_year'] , $value['acquired_month'], $value['acquired_day'] ) ) . "\r   " .
-                     COMPANY_URL . $value['company']['permalink'] . "\r".
-                     $value['source_description']  . "\r   " . $value['source_url'];
-      }
-      return join( "\r\r", $output);
-   }
-
-   function get_funding_rounds( $funding_rounds ){
-      $output = array();
-      foreach( $funding_rounds as $value ){
-         $output[] = $value['round_code'] . " : " . $value['raised_currency_code'] . ' ' . $value['raised_amount'] . " " .
-                     join( "/", array( $value['funded_year'] , $value['funded_month'], $value['funded_day'] ) ) . "\r" .
-                     self::get_invest_company( $value['investments'] ) . "\r".
-                     $value['source_description'] . "\r   "  . $value['source_url'];
-      }
-      return join( "\r\r", $output);
-   }
-
-   function get_invest_company( $investments ){
-      $output = array();
-      foreach( $investments as $value ){
-         $data     = $value['company']['name'] . " " . $value['company']['permalink'] . "\r   ";
-         $data    .= (empty($value['financial_org']))?"":$value['financial_org']['name'] . "   " . COMPANY_URL . $value['financial_org']['permalink'] . " ";
-         $data    .= (empty($value['person']))?"":$value['person']['first_name'] . " " . $value['person']['last_name'] . "   " . PEOPLE_URL . $value['person']['permalink'];
-
-         $output[] = $data;
-      }
-      return join( "\r", $output);
-   } 
-
-   function get_overview($overview){
-      $overview = self::removeTag( $overview, 'p' );
-      $overview = self::removeTag( $overview, 'a' );
-      $overview = self::removeTag( $overview, 'em' );
-      return $overview;
-   }
-
-   function removeTag($str, $name){
-      $regx = "/<\/?$name(.*?)>/s";
-      return preg_replace($regx, '', $str);
-   }
 
 }
 
 class Constant{
    public static function get_columns(){
       return array (
-         'name',
-         'website',
-         'blog_url',
-         'category_code',
-         'number_of_employees',
-         'founded',
-         'deadpooled',
-         'description',
-         'overview',
-         'relationships',
-         'competitors',
-         'providerships',
-         'total_money_raised',
-         'funding_rounds',
-         'acquisition',
-         'acquisitions',
-         'investments',
+          'name'             ,
+          'crunchbase_url'   ,
+          'homepage_url'     ,
+          'short_description',
+          'products'         ,
+          'description'      ,
+          'founded_on'       ,
+          'closed_on'        ,
+          'stock_exchange_id',
+          'own'              ,
+          'current_team'     ,
+          'acquisitions'     ,
+          'competitors'      ,
+          'offices'          ,
+          'headquarters'     ,
+          'funding_rounds'   ,
+          'markets'          ,
+          'investments'      ,
+          'founders'         ,
+          'ipo'              ,
+          'web_presences'    ,
+          'press'            ,
       );
    }
    public static function get_firstline(){
