@@ -12,28 +12,28 @@
 // Output =========================================
 // Column is below
 // Sample is Output_sample.csv
-// 'name'             
-// 'crunchbase_url'   
-// 'homepage_url'     
-// 'short_description'
-// 'products'         
-// 'description'      
-// 'founded_on'       
-// 'closed_on'        
-// 'stock_exchange_id'
-// 'own'              
-// 'current_team'     
-// 'acquisitions'     
-// 'competitors'      
-// 'offices'          
-// 'headquarters'     
-// 'funding_rounds'   
-// 'markets'          
-// 'investments'      
-// 'founders'         
-// 'ipo'              
-// 'web_presences'    
-// 'press'            
+// 'name'             ,
+// 'crunchbase_url'   ,
+// 'homepage_url'     ,
+// 'short_description',
+// 'description'      ,
+// 'products'         ,
+// 'founded_on'       ,
+// 'closed_on'        ,
+// 'stock_exchange_id',
+// 'own'              ,
+// 'current_team'     ,
+// 'acquisitions'     ,
+// 'competitors'      ,
+// 'offices'          ,
+// 'headquarters'     ,
+// 'funding_rounds'   ,
+// 'markets'          ,
+// 'investments'      ,
+// 'founders'         ,
+// 'ipo'              ,
+// 'web_presences'    ,
+// 'press'            ,
 //
 $CONFIG = parse_ini_file( "./config.ini" );
 define( 'API_KEY', $CONFIG["API_KEY"] ); 
@@ -55,7 +55,6 @@ function main($file_name){
    foreach( $files as $file ){
       if( empty($file) ) { echo "\n"; continue;  }
       $url             = Constant::get_url($file);
-      $url             = './facebook';
       $getJsonContents = new getJsonContents($url);
       $getJsonContents -> run();
       sleep(1);
@@ -191,16 +190,17 @@ class getJsonContents{
    function parse_json(){
       $this->data['name'             ] = $this->properties['name'];
       $this->data['crunchbase_url'   ] = $this->url["www"] . "/organization/" . $this->properties["permalink"];
+      $this->data['homepage_url'     ] = $this->properties['homepage_url'];
       $this->data['short_description'] = $this->properties['short_description'];
       $this->data['description'      ] = $this->properties['description'];
-      $this->data['homepage_url'     ] = $this->properties['homepage_url'];
-      $this->data['stock_exchange_id'] = $this->properties['stock_exchange_id'];
+      $this->data['products'         ] = self::get_items( $this->relationships, "products" );
       $this->data['founded_on'       ] = (!empty( $this->properties['founded_on']) )?$this->properties['founded_on']:"";
       $this->data['closed_on'        ] = (!empty( $this->properties['closed_on'] ) )?$this->properties['closed_on']:"";
+      $this->data['stock_exchange_id'] = $this->properties['stock_exchange_id'];
       $this->data['own'              ] = self::get_items( $this->relationships, "owns" );
       $this->data['current_team'     ] = self::get_items( $this->relationships, "current_team" );
       $this->data['acquisitions'     ] = self::get_items( $this->relationships, "acquisitions" );
-      $this->data['competitors'      ]  = self::get_items( $this->relationships, "competitors" );
+      $this->data['competitors'      ] = self::get_items( $this->relationships, "competitors" );
       $this->data['offices'          ] = self::get_items( $this->relationships, "offices" );
       $this->data['headquarters'     ] = self::get_items( $this->relationships, "headquarters" );
       $this->data['funding_rounds'   ] = self::get_items( $this->relationships, "funding_rounds" );
@@ -208,7 +208,6 @@ class getJsonContents{
       $this->data['investments'      ] = self::get_items( $this->relationships, "investments" );
       $this->data['founders'         ] = self::get_items( $this->relationships, "founders" );
       $this->data['ipo'              ] = self::get_items( $this->relationships, "ipo" );
-      $this->data['products'         ] = self::get_items( $this->relationships, "products" );
       $this->data['web_presences'    ] = self::get_items( $this->relationships, "web_presences" );
       $this->data['press'            ] = self::get_items( $this->relationships, "press" );
    }
@@ -231,8 +230,8 @@ class Constant{
           'crunchbase_url'   ,
           'homepage_url'     ,
           'short_description',
-          'products'         ,
           'description'      ,
+          'products'         ,
           'founded_on'       ,
           'closed_on'        ,
           'stock_exchange_id',
