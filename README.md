@@ -2,7 +2,7 @@ CrunchbaseCrawler
 =================
 # How to Run this program
 
-Edit CRUNCHBASE API KEY CODE @crawler.php
+Edit CRUNCHBASE API KEY CODE @config.ini
 Use at Shell Command like below
 
 ```

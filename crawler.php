@@ -30,9 +30,8 @@
 // 'acquisitions',
 // 'invest',
 //
-// ================================================
-// API_KEY = CRUNCHBASE API KEY CODE
-define( 'API_KEY', '' ); 
+$CONFIG = parse_ini_file( "./config.ini" );
+define( 'API_KEY', $CONFIG["API_KEY"] ); 
 
 define( 'API_URL', 'http://api.crunchbase.com/v/1/company/%s.js?api_key=' . API_KEY );
 define( 'COMPANY_URL', 'http://www.crunchbase.com/company/' );
