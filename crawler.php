@@ -41,7 +41,7 @@ define( 'USER_KEY', "?user_key=" . API_KEY );
 define( 'PAGENATE_NUM', 8 );
 define( 'PAGENATE_UNIT', 1000 );
 
-define( 'API_URL', 'http://api.crunchbase.com/v/2/organizations/%s' . USER_KEY );
+define( 'API_URL', 'http://api.crunchbase.com/v/2/organization/%s' . USER_KEY );
 
 if( is_valid($argv) ){
      main($argv[1]);
